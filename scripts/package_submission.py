@@ -14,7 +14,7 @@ MEMBERS = ["AryanRastogi", "RaghavGarg"]
 GITHUB_LINK = "https://github.com/AryanRastogi72/EvidenceLens"
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-REPORT_PDF = os.path.join("docs", "report", "main.pdf")
+REPORT_PDF = os.path.join("docs", "report", "EvidenceLens_Report.pdf")
 DATASET_ZIP = os.path.join("data", "raw", "beir", "trec-covid.zip")
 
 LOCAL_EXCLUDE_FILE = os.path.join(PROJECT_ROOT, ".git", "info", "exclude")
@@ -58,7 +58,7 @@ from data/raw/beir/trec-covid.zip, which is included.
    then see evaluation/summary.md. Run run_eval before the tests: one test compares a search with a run file.
 5. Tests: python -m unittest discover tests
 
-The report is main.pdf at the top of this ZIP. The README explains the project.
+The report is EvidenceLens_Report.pdf at the top of this ZIP. The README explains the project.
 """
 
 
@@ -105,7 +105,7 @@ def main():
     zip_path = os.path.join(PROJECT_ROOT, zip_name)
     file_count = 0
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as archive:
-        archive.write(os.path.join(PROJECT_ROOT, REPORT_PDF), "main.pdf")
+        archive.write(os.path.join(PROJECT_ROOT, REPORT_PDF), "EvidenceLens_Report.pdf")
         archive.writestr("GITHUB_LINK.txt", GITHUB_LINK + "\n")
         archive.writestr("BUILD.md", BUILD_TEXT)
         file_count += 3

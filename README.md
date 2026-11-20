@@ -51,7 +51,7 @@ These are system integration and teaching contributions built from established m
 | `resources/` | the synonym lexicon and the query stopwords |
 | `scripts/` | the submission packaging script |
 | `index_out/` | the prebuilt index of 171,332 documents |
-| `docs/` | the report (`docs/report/main.pdf`) and screenshots (`docs/screenshots/`) |
+| `docs/` | the report (`docs/report/EvidenceLens_Report.pdf`) and screenshots (`docs/screenshots/`) |
 | `config.json` | band, BM25 parameters, thesaurus and clustering settings |
 
 ## Run on Windows
