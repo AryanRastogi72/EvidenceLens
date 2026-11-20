@@ -1,73 +1,163 @@
 # EvidenceLens
 
-An offline, explainable research search agent over TREC-COVID (171,332 papers). It rewrites your question, keeps the result set small enough to read, asks a clarifying question when the question is too broad, carries context across follow-ups, labels the study type of every paper, and shows why each result was ranked where it is. It uses no generative AI at query time: every step is classical information retrieval and every decision is logged.
+Search that shows its reasoning.
 
-CSD358 Information Retrieval course project, Track 2 (conversational and agentic search), by Aryan Rastogi and Raghav Garg. It extends our midsem project, Goldilocks (see "Midsem history").
+EvidenceLens is an Information Retrieval course project for scientific search. It searches the 171,332 papers of TREC-COVID offline: it turns a question into concepts and a Boolean query, keeps the result set between 20 and 200 papers, asks a clarifying question when the question is too broad, handles follow-up turns, labels the study type of every paper and explains why each result was ranked where it is. No generative AI is used at query time.
 
-## Run it
+Repository: https://github.com/AryanRastogi72/EvidenceLens
 
-Python 3.12 or newer and Node.js are needed. From the project folder:
+## Track choice
 
-```
+Our track is Track 2, conversational and agentic search. The agent is the query controller, the clarification step and the follow-up rules, all deterministic and logged:
+
+1. The controller reads index statistics, runs the Boolean query, and tightens or relaxes it until the result count is in the target band.
+2. When a question is too broad it clusters the candidates and asks the user to choose a direction.
+3. Follow-up turns ("what about breastfeeding", "only randomized trials", "without children") are rewritten by five named rules into a new set of concepts, and the rewritten query is shown.
+
+## Novelty
+
+The midsem project, Goldilocks, already had a result-size controller with a decision trace and session follow-ups, but it depended on a language-model API to propose and refine queries. EvidenceLens adds:
+
+1. Offline query building with no language model: concept extraction by idf, a COVID synonym lexicon, a word2vec thesaurus and Rocchio feedback terms.
+2. Clarifying questions made by clustering the candidate set and labelling each cluster with its most distinctive words.
+3. Evidence Lens: a rule-based study-type classifier (systematic review, randomized trial, observational, case report, modelling, lab or animal, opinion, other) used as a filter and as an optional score.
+4. Per-result explanations: matched words, the BM25 contribution of each, the rule behind the study type and the best sentence of the abstract.
+5. BM25 ranking with a title zone, next to the tf-idf cosine ranking.
+6. A larger evaluation with paired significance tests and a comparison with the BM25 result published for TREC-COVID in the BEIR paper.
+
+These are system integration and teaching contributions built from established methods. They are not a new retrieval algorithm, and the evaluation does not show that the agent is more relevant than plain BM25 (see below).
+
+## How search works
+
+1. The question is lowercased, tokenized and stemmed; query stopwords are removed.
+2. Each word or synonym group becomes a concept. Concepts are ordered by idf, and very common ones are held back (index elimination).
+3. The conversation rules rewrite a follow-up turn into the session's concepts and show the rewritten query.
+4. The controller builds a Boolean query from the three rarest concepts and counts the hits from the postings.
+5. In band (20 to 200 hits): accept. Too many: add a concept, require a word in the title, or add a feedback term. Too few: add thesaurus neighbours, wildcard expansions, or drop the rarest concept.
+6. If the set is still too large, the candidates are clustered and the user is asked to choose a cluster.
+7. The accepted set is ranked with BM25, optionally combined with the study-type score.
+8. Every result carries its explanation, and the whole trace is available behind "How did I get this?".
+
+## Project map
+
+| Folder or file | What it holds |
+|---|---|
+| `pipeline/` | tokenizer, index builder, thesaurus builder, study-type label builder |
+| `engine/` | Boolean parser, controller, rankers, conversation rules, clarification, study-type classifier, explanations |
+| `api/` | FastAPI app: `/api/search`, `/api/clarify`, `/api/rerank`, `/api/doc/{id}`, `/api/eval`, `/api/health` |
+| `web/` | React web app |
+| `evaluation/` | the six evaluation runs, significance tests, charts and saved results (`summary.md`) |
+| `tests/` | unit tests |
+| `resources/` | the synonym lexicon and the query stopwords |
+| `scripts/` | the submission packaging script |
+| `index_out/` | the prebuilt index of 171,332 documents |
+| `docs/` | the report (`docs/report/main.pdf`) and screenshots (`docs/screenshots/`) |
+| `config.json` | band, BM25 parameters, thesaurus and clustering settings |
+
+## Run on Windows
+
+Open PowerShell in the project folder. Python 3.12 or newer and Node.js are needed.
+
+```powershell
 python -m venv .venv
-.venv\Scripts\activate            # Windows; source .venv/bin/activate on macOS and Linux
-pip install -r requirements.txt
-python -m pipeline.build_index    # reads data/raw/beir/trec-covid.zip, writes index_out/
+& '.venv\Scripts\Activate.ps1'
+python -m pip install -r requirements.txt
+python -m pipeline.build_index
 python -m pipeline.build_thesaurus
 python -m pipeline.build_evidence
-cd web && npm install && npm run build && cd ..
-uvicorn api.main:app              # open http://localhost:8000
+cd web
+npm install
+npm run build
+cd ..
+uvicorn api.main:app
 ```
 
-The three `pipeline` commands are needed after a fresh clone only for `abstracts.sqlite` (made by `build_index`, not tracked in git because of its size); the git repository otherwise tracks the rest of `index_out/`. The submission ZIP leaves `index_out/` out for size, so run all three there. A rebuilt thesaurus can differ slightly from ours, because word2vec training with several workers is not bit-reproducible.
+Then open http://localhost:8000 (health check: http://localhost:8000/api/health). `build_index` reads `data/raw/beir/trec-covid.zip` or downloads TREC-COVID the first time, and writes `index_out/`. The index files are already in the repository except `abstracts.sqlite`, so after a fresh clone only `build_index` is needed; rebuilding the thesaurus can give slightly different neighbours, because word2vec training with several workers is not bit-reproducible.
 
-Command-line smoke test: `python -m engine.main "covid vaccine pregnant"`. Tests: `python -m unittest discover tests`. Web development server: `cd web && npm run dev` (port 5173, proxies `/api` to port 8000). Health check: `http://localhost:8000/api/health`.
+Command-line search, tests and the web development server:
 
-## What you see
-
-- **Search** shows results only: one line ("I searched for ... - N papers") and a column of result slips with the study-type stamp and the best sentence of the abstract. "Why this result" shows the score, the per-term BM25 bars and the rule behind the study type.
-- **How did I get this?** opens a side sheet with the concepts, the numbered trace of tighten and relax steps against the 20 to 200 band, the Boolean query and earlier turns. A switch there re-ranks the current turn with plain BM25 over the whole collection.
-- **How it works** explains the pipeline. **Evaluation** shows the saved results, starting with where the agent loses.
-
-## Architecture
-
-```
-question -> conversation rules -> concept extraction (idf, lexicon, index elimination)
-         -> Boolean controller over the inverted index (band 20-200: accept / tighten / relax)
-              uses: word2vec thesaurus, Rocchio terms, k-gram wildcards, title zone
-         -> too broad? clusters of the result set become clarifying choices
-         -> BM25 ranking (+ optional evidence score) -> per-result explanation -> web app
+```powershell
+python -m engine.main "covid vaccine pregnant"
+python -m unittest discover tests
+cd web; npm run dev
 ```
 
-| Folder | Content |
-|---|---|
-| `pipeline/` | index, thesaurus and evidence-label builders |
-| `engine/` | Boolean parser, controller, ranker, conversation rules, clarification, evidence classifier, explainer |
-| `api/` | FastAPI app (`/api/search`, `/api/clarify`, `/api/rerank`, `/api/doc/{id}`, `/api/eval`, `/api/health`) |
-| `web/` | React app ("Bench Notebook" design) |
-| `evaluation/` | six runs, significance tests, charts, saved results (`summary.md`) |
-| `docs/` | the report (`docs/report/main.pdf`) and the screenshots (`docs/screenshots/`) |
+To repeat the evaluation (about two minutes), then read `evaluation/summary.md`:
 
-## IR concepts used
+```powershell
+python -m evaluation.run_eval
+python -m evaluation.significance
+python -m evaluation.make_summary
+python -m evaluation.validate_results
+```
 
-Inverted index with sharded postings; Boolean retrieval with postings intersection ordered by document frequency; k-gram index for wildcards; title-zone postings; index elimination; Okapi BM25 (Lucene idf, k1 = 1.2, b = 0.75); ltc.ltc tf-idf cosine; Rocchio pseudo-relevance feedback (positive part only); a word2vec thesaurus for global query expansion; leader-follower clustering for clarification, with contrast-score labels; rule-based query rewriting for follow-ups; a rule-based study-type classifier with an evidence score g(d) from a published levels-of-evidence ordering; paired randomization tests with Bonferroni correction.
+## Verified evaluation
 
-## Evaluation, with the trade-offs
+All 50 TREC-COVID topics, both the short keyword query and the question text, ranking depth 1000, nDCG with linear gain. Full tables: `evaluation/summary.md`.
 
-Fifty TREC-COVID topics, both the keyword field and the question field, depth 1000, nDCG with linear gain. Full numbers: `evaluation/summary.md`.
+| Run | Keyword P@10 | Keyword nDCG@10 | Question P@10 | Question nDCG@10 |
+|---|---|---|---|---|
+| R0 Goldilocks offline (AND, tf-idf) | 0.5200 | 0.4663 | 0.1360 | 0.1284 |
+| R1 BM25, whole collection | 0.6660 | 0.6032 | 0.6860 | 0.6555 |
+| R2 tf-idf cosine, whole collection | 0.3660 | 0.3343 | 0.3720 | 0.3392 |
+| R3 BM25 + Rocchio feedback | 0.6380 | 0.5741 | 0.6680 | 0.6180 |
+| R4 EvidenceLens agent | 0.6480 | 0.5897 | 0.4940 | 0.4452 |
+| R5 agent + evidence weight 0.2 | 0.6460 | 0.5856 | 0.4800 | 0.4363 |
 
-| run | nDCG@10 keyword | nDCG@10 question |
-|---|---|---|
-| R1 BM25, whole collection | 0.6032 | 0.6555 |
-| R3 BM25 + Rocchio | 0.5741 | 0.6180 |
-| R4 EvidenceLens agent | 0.5897 | 0.4452 |
-| R5 agent + evidence weight 0.2 | 0.5856 | 0.4363 |
+The agent returns one set rather than a ranking, so it is also scored as a set:
 
-- The agent keeps 98% (keyword) and 96% (question) of topics inside the 20 to 200 band, against 32% and 12% for the midsem AND baseline.
-- It is **tied with BM25 on keyword queries** (p = 0.6737) and **clearly worse on question text** (p = 0.0001). Because the band caps the set at about 200 papers, its Recall@1000 is 0.1217 and 0.0531 against 0.4161 and 0.4543 for BM25.
-- Rocchio feedback and the evidence weight did not improve ranking. The controller revision (v2.1) was made after seeing v2.0 on all 50 topics, with no held-out topics, so it is a post-hoc result.
-- Our BM25 on the question field gets nDCG@10 0.6555; the BEIR paper reports 0.656 for BM25 on TREC-COVID (Table 2, version 4). Their BM25 setup differs from ours, so we do not claim to reproduce it.
-- Study-type classifier, against 120 hand-labelled documents (15 per predicted class, `evaluation/evidence_label_sample.csv`): estimated accuracy 0.597 for the collection (re-weighted), 0.733 on the balanced sample. Recall is low for case reports (0.123) and opinion pieces (0.142). Per-class precision, recall and F1 are in `evaluation/summary.md`.
+| Field | Run | Mean hits | Precision | Recall | F1 | In band |
+|---|---|---|---|---|---|---|
+| keyword | R0 | 517.5 | 0.3324 | 0.2224 | 0.2116 | 32% |
+| keyword | R4 | 107.4 | 0.4656 | 0.1217 | 0.1732 | 98% |
+| question | R0 | 10.1 | 0.1627 | 0.0091 | 0.0145 | 12% |
+| question | R4 | 128.2 | 0.2639 | 0.0535 | 0.0776 | 96% |
+
+The study-type classifier was checked against 120 hand-labelled documents (15 per predicted class). Estimated accuracy is 0.597 for the collection (re-weighted by sampling probability) and 0.733 on the balanced sample:
+
+| Class | Precision | Recall (re-weighted) | F1 (re-weighted) |
+|---|---|---|---|
+| systematic review or meta-analysis | 0.733 | 1.000 | 0.846 |
+| randomized trial | 0.800 | 0.685 | 0.738 |
+| observational | 0.867 | 0.412 | 0.559 |
+| case report or series | 0.733 | 0.123 | 0.211 |
+| modelling or simulation | 0.933 | 0.922 | 0.927 |
+| lab or animal | 0.867 | 0.671 | 0.756 |
+| opinion or editorial | 0.467 | 0.142 | 0.218 |
+| other | 0.467 | 0.930 | 0.621 |
+
+What the results say, including the losses:
+
+1. The agent keeps 98% (keyword) and 96% (question) of topics inside the 20 to 200 band, against 32% and 12% for the midsem AND baseline.
+2. It is tied with BM25 on keyword queries (nDCG@10 0.5897 against 0.6032, p = 0.6737) and clearly worse on question text (0.4452 against 0.6555, p = 0.0001).
+3. The band caps the set at about 200 papers, so Recall@1000 is 0.1217 and 0.0531 against 0.4161 and 0.4543 for BM25.
+4. Rocchio feedback and the evidence weight did not improve ranking. The controller revision (v2.1) was made after seeing v2.0 on all 50 topics, with no held-out topics, so its gain is a post-hoc result.
+5. Our BM25 on the question text scores nDCG@10 0.6555; the BEIR paper reports 0.656 for BM25 on TREC-COVID (Table 2, version 4). Their BM25 setup differs from ours, so we do not claim to reproduce it.
+6. Classifier recall is low for case reports (0.123) and opinion pieces (0.142), and the per-class numbers rest on 120 documents.
+
+## Information Retrieval choices
+
+1. The inverted index maps each stem to a sharded postings list of documents and term counts.
+2. Boolean retrieval intersects postings lists in order of document frequency, shortest list first.
+3. A trigram k-gram index expands wildcard terms, and a title-zone postings file supports title restrictions.
+4. Index elimination leaves very common concepts out of the first query.
+5. Okapi BM25 uses the Lucene form of idf with k1 = 1.2 and b = 0.75; the tf-idf cosine uses log tf, idf and length normalisation (ltc.ltc).
+6. Rocchio pseudo-relevance feedback (positive part only) supplies tightening terms.
+7. A word2vec thesaurus trained on the corpus supplies synonyms when a query is too narrow.
+8. Leader-follower clustering of the top 300 candidates gives the clarifying choices, labelled by contrast scores.
+9. Rule-based query rewriting handles follow-ups, exclusions, facet swaps and topic switches.
+10. A rule-based classifier assigns a study type; its evidence score uses a published levels-of-evidence ordering.
+11. Evaluation uses P@10, nDCG@10, MRR@10, MAP@100, recall, set precision, recall and F1, paired randomization tests and Bonferroni correction.
+
+## Libraries
+
+1. NLTK supplies the Porter stemmer.
+2. NumPy supports the thesaurus build.
+3. Gensim trains the word2vec model.
+4. Requests downloads the dataset when it is not present.
+5. Matplotlib writes the saved evaluation charts.
+6. FastAPI and Uvicorn serve the API and the web app; HTTPX supports the API tests.
+7. React, Vite, Tailwind and Motion build the web interface.
 
 ## Team
 
@@ -77,14 +167,10 @@ Raghav Garg created the foundation of the midsem system Goldilocks: indexing, re
 
 Aryan Rastogi refined Goldilocks (model-provider switch, web interface, audit and integration) and led its extension into EvidenceLens.
 
-## Source code
-
-https://github.com/AryanRastogi72/Goldilocks
-
 ## Midsem history
 
-Goldilocks, the midsem project, controlled result size with a Boolean query controller and ranked with tf-idf cosine, but relied on a language-model API to propose queries; 14 of 50 topics had no valid proposal in the saved replay. Its state is frozen in the git tag `midsem-final` (commit 37d95aa) and its saved results are in `archive/midsem/evaluation/summary.tsv`: 86.0% of topics inside the band, mean 73.5 hits, P@10 0.4860, nDCG@10 0.4549 and MRR@10 0.6593. Those nDCG numbers use gain 2^g - 1, so they are not comparable with the linear-gain numbers above.
+The midsem project, Goldilocks, is frozen in the git tag `midsem-final`.
 
 ## Data and references
 
-TREC-COVID through BEIR (Roberts et al., Journal of Biomedical Informatics 2021; Thakur et al., 2021). The levels-of-evidence ordering behind g(d) is from Burns, Rohrich and Chung (Plastic and Reconstructive Surgery, 2011). The full reference list is in the report.
+TREC-COVID through BEIR (Roberts et al., Journal of Biomedical Informatics 2021; Thakur et al., 2021). The levels-of-evidence ordering behind the evidence score is from Burns, Rohrich and Chung (Plastic and Reconstructive Surgery, 2011). The full reference list is in the report.
