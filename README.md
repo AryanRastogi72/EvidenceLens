@@ -6,17 +6,11 @@ EvidenceLens is an Information Retrieval course project for scientific search. I
 
 Repository: https://github.com/AryanRastogi72/EvidenceLens
 
-## Track choice
-
-Our track is Track 2, conversational and agentic search. The agent is the query controller, the clarification step and the follow-up rules, all deterministic and logged:
-
-1. The controller reads index statistics, runs the Boolean query, and tightens or relaxes it until the result count is in the target band.
-2. When a question is too broad it clusters the candidates and asks the user to choose a direction.
-3. Follow-up turns ("what about breastfeeding", "only randomized trials", "without children") are rewritten by five named rules into a new set of concepts, and the rewritten query is shown.
-
 ## Novelty
 
-The midsem project, Goldilocks, already had a result-size controller with a decision trace and session follow-ups, but it depended on a language-model API to propose and refine queries. EvidenceLens adds:
+The midsem project, Goldilocks, already had a result-size controller with a decision trace and session follow-ups, but it depended on a language-model API to propose and refine queries. 
+
+EvidenceLens adds:
 
 1. Offline query building with no language model: concept extraction by idf, a COVID synonym lexicon, a word2vec thesaurus and Rocchio feedback terms.
 2. Clarifying questions made by clustering the candidate set and labelling each cluster with its most distinctive words.
@@ -162,10 +156,6 @@ What the results say, including the losses:
 ## Team
 
 Aryan Rastogi and Raghav Garg.
-
-Raghav Garg created the foundation of the midsem system Goldilocks: indexing, retrieval, the query controller and the evaluation.
-
-Aryan Rastogi refined Goldilocks (model-provider switch, web interface, audit and integration) and led its extension into EvidenceLens.
 
 ## Midsem history
 
