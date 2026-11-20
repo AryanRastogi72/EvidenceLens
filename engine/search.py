@@ -5,16 +5,11 @@ sorted postings intersection, and wildcard expansion via the k gram index.
 """
 
 import os
-import sys
 import json
 import math
-import re
 import sqlite3
 import threading
-from collections import defaultdict, OrderedDict
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from pipeline.tokenizer import stem_term
+from collections import OrderedDict
 
 
 class SearchIndex:
@@ -333,17 +328,3 @@ class SearchIndex:
                 self._collect_df(child, table)
         elif op == "NOT":
             self._collect_df(ast[1], table)
-
-
-if __name__ == "__main__":
-    # quick test if index exists
-    if os.path.exists("index_out/dictionary.json"):
-        idx = SearchIndex()
-        print(f"Loaded index: {idx.num_docs} docs, {len(idx.dictionary)} terms")
-        # test a few terms
-        for term in ["covid", "treatment", "vaccin"]:
-            stemmed = stem_term(term)
-            df = idx.get_df(stemmed)
-            print(f"  '{term}' -> stem '{stemmed}', df={df}")
-    else:
-        print("Index not built yet. Run: python -m pipeline.build_index")

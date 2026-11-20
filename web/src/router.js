@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 
 // Client-side routing with real URLs. The server answers every non-API path with index.html, so reload and deep links work.
-export const ROUTES = { "/": "search", "/how": "how", "/evaluation": "evaluation" };
+const ROUTES = { "/": "search", "/how": "how", "/evaluation": "evaluation" };
 
 const CHANGE_EVENT = "pathchange";
 
-export function routeOf(pathname) {
+function routeOf(pathname) {
   return ROUTES[pathname.replace(/\/+$/, "") || "/"] ?? "search";
 }
 

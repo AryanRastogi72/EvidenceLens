@@ -28,7 +28,7 @@ from engine.search import SearchIndex
 from evaluation.metrics import (
     compute_map_at_k, compute_mrr_at_k, compute_ndcg_at_k, compute_p_at_k, compute_recall_at_k, compute_set_metrics,
 )
-from evaluation.quick_rank_eval import FIELDS, load_qrels, load_topics
+from evaluation.topics import FIELDS, load_qrels, load_topics
 from pipeline.tokenizer import query_terms, tokenize
 
 DEPTH = 1000

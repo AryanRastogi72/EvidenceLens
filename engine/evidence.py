@@ -78,11 +78,6 @@ def g_value(class_id, config):
     return config["evidence_g"][validate_class(class_id)]
 
 
-def classify_doc(index, doc_id):
-    title, abstract = index.get_title_and_abstract(doc_id)
-    return classify(title, abstract)
-
-
 def load_labels(index_dir):
     """Reads index_out/evidence.json once: {"classes", "rules", "labels": [[class_idx, rule_idx], ...]}."""
     if index_dir not in _labels_cache:

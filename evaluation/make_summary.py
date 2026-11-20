@@ -11,7 +11,7 @@ from statistics import mean
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from evaluation.quick_rank_eval import FIELDS, load_qrels, load_topics
+from evaluation.topics import FIELDS, load_qrels, load_topics
 
 SUMMARY_MD = os.path.join("evaluation", "summary.md")
 FIELD_LABELS = {"metadata.query": "keyword query (`metadata.query`)", "text": "question text (`text`)"}

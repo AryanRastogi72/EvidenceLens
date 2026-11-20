@@ -198,25 +198,3 @@ def collect_terms(node):
             result |= collect_terms(child)
         return result
     return set()
-
-
-if __name__ == "__main__":
-    # quick test
-    tests = [
-        "covid AND treatment",
-        "covid OR coronavirus",
-        "covid AND NOT influenza",
-        "covid AND (treatment OR vaccine)",
-        "treat*",
-        "coronavirus origin transmission",
-    ]
-    for q in tests:
-        try:
-            ast = parse(q)
-            print(f"Query: {q}")
-            print(f"  AST: {ast}")
-            print(f"  Str: {ast_to_string(ast)}")
-            print(f"  Terms: {collect_terms(ast)}")
-            print()
-        except ParseError as e:
-            print(f"Query: {q} -> ERROR: {e}")

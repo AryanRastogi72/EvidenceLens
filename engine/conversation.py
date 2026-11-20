@@ -12,7 +12,7 @@ import threading
 import time
 from collections import OrderedDict
 
-from engine.controller import ranking_stems, run_controller
+from engine.controller import run_controller
 from engine.evidence import class_of, docs_of_class, g_value, validate_class
 from engine.query_understanding import make_concept, mark_elimination, understand
 from engine.ranker import apply_evidence_weight, rank_bm25

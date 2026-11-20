@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from fastapi.testclient import TestClient
 
 from api.main import app
-from evaluation.quick_rank_eval import FIELDS, load_topics
+from evaluation.topics import FIELDS, load_topics
 
 OUTPUT_PATH = os.path.join("evaluation", "api_latency.json")
 RANKERS = ["agent", "bm25"]

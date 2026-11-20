@@ -16,10 +16,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from engine.controller import load_config, run_controller
 from engine.search import SearchIndex
 from evaluation.metrics import compute_ndcg_at_k, compute_p_at_k
-from evaluation.quick_rank_eval import FIELDS, load_qrels, load_topics
+from evaluation.topics import FIELDS, load_qrels, load_topics
 
 RUNS_PATH = os.path.join("evaluation", "controller_runs.json")
-QUICK_PATH = os.path.join("evaluation", "quick_rank_results.json")
+RESULTS_PATH = os.path.join("evaluation", "results.json")
 
 
 def run_topic(topic, field_getter, config, index, qrels):
@@ -57,14 +57,14 @@ def main():
     config = load_config()
     index = SearchIndex()
     topics, qrels = load_topics(), load_qrels()
-    with open(QUICK_PATH, "r", encoding="utf-8") as f:
-        quick = json.load(f)
+    with open(RESULTS_PATH, "r", encoding="utf-8") as f:
+        bm25_run = json.load(f)["runs"]["R1"]["fields"]
 
     output = {}
     for field_name, field_getter in FIELDS.items():
         runs = [run_topic(topic, field_getter, config, index, qrels) for topic in topics]
         summary = summarize(runs)
-        bm25_means = quick[field_name]["bm25"]["mean"]
+        bm25_means = bm25_run[field_name]["mean"]
         summary["full_collection_bm25_p_at_10"] = bm25_means["p_at_10"]
         summary["full_collection_bm25_ndcg_at_10"] = bm25_means["ndcg_at_10"]
         output[field_name] = {"summary": summary, "runs": runs}

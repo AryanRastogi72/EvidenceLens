@@ -5,7 +5,7 @@ import json
 import os
 
 from evaluation.make_summary import top_differences
-from evaluation.quick_rank_eval import FIELDS, load_topics
+from evaluation.topics import FIELDS, load_topics
 
 EVAL_DIR = "evaluation"
 

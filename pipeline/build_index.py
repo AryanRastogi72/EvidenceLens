@@ -26,14 +26,8 @@ from collections import defaultdict, Counter
 # add project root to path so we can import sibling packages
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from pipeline.tokenizer import tokenize, stem_term
-
-
-def load_config():
-    """Reads config.json from project root."""
-    config_path = os.path.join(os.path.dirname(__file__), "..", "config.json")
-    with open(config_path, "r") as f:
-        return json.load(f)
+from engine.controller import load_config
+from pipeline.tokenizer import tokenize
 
 
 def build_inverted_index(corpus, config):

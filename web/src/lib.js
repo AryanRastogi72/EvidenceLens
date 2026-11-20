@@ -23,7 +23,7 @@ const STAMP_LABELS = {
 export const stampLabel = (evidenceClass) => STAMP_LABELS[evidenceClass] ?? evidenceClass;
 export const evidenceLabel = (evidenceClass) => (EVIDENCE_CLASSES.find(([id]) => id === evidenceClass) ?? [0, evidenceClass])[1];
 
-export const TOTAL_DOCUMENTS = 171332;
+const TOTAL_DOCUMENTS = 171332;
 export const RAIL_TICKS = [1, 10, 100, 1000, 10000, 100000];
 
 // Position of a hit count on the shared log rail, 0 to 1. The same scale is used by every step.

@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from evaluation.metrics import compute_set_metrics
 from evaluation.run_eval import RESULTS_PATH, score_ranking, trec_path
-from evaluation.quick_rank_eval import load_qrels
+from evaluation.topics import load_qrels
 
 TOLERANCE = 1e-9
 EXPECTED_TOPICS = 50

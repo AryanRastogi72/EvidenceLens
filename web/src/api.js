@@ -1,5 +1,5 @@
 // Thin client for the EvidenceLens API. Every failure becomes an ApiFail with a readable message.
-export class ApiFail extends Error {
+class ApiFail extends Error {
   constructor(message, code, status) {
     super(message);
     this.code = code;

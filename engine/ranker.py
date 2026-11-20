@@ -6,11 +6,6 @@ Uses a heap-based top-K selection to avoid sorting all documents.
 
 import math
 import heapq
-import sys
-import os
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from pipeline.tokenizer import stem_term
 
 
 def compute_query_vector(query_terms, index):
@@ -158,21 +153,3 @@ def apply_evidence_weight(ranked, weight, g_of_doc):
     rel_max = max(score for score, _ in ranked) or 1.0
     net = [(score / rel_max + weight * g_of_doc(doc_id), doc_id) for score, doc_id in ranked]
     return sorted(net, key=lambda pair: (-pair[0], pair[1]))
-
-
-if __name__ == "__main__":
-    # quick test
-    from engine.search import SearchIndex
-    if os.path.exists("index_out/dictionary.json"):
-        idx = SearchIndex()
-        # get postings for "covid"
-        term = stem_term("covid")
-        postings = idx.get_postings(term)
-        doc_ids = set(d for d, tf in postings[:100])  # take first 100
-        query_terms = [stem_term("covid"), stem_term("treatment")]
-        results = rank_documents(doc_ids, query_terms, idx, top_k=5)
-        for score, doc_id in results:
-            title = idx.get_doc_title(doc_id)
-            print(f"  score={score:.4f}  doc={doc_id}  title={title[:60]}")
-    else:
-        print("Index not built yet.")

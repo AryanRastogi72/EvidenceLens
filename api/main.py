@@ -7,7 +7,6 @@ Run: uvicorn api.main:app   (port 8000)
 """
 
 import logging
-import os
 import re
 import threading
 import time
@@ -24,7 +23,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from api.eval_data import build_eval_payload
 from api.schemas import SESSION_ID_PATTERN, ClarifyRequest, RerankRequest, SearchRequest
 from engine.controller import load_config
-from engine.conversation import KEEP_FILTER, SESSIONS, apply_clarification, handle_turn, rerank_turn
+from engine.conversation import SESSIONS, apply_clarification, handle_turn, rerank_turn
 from engine.explain import explain
 from engine.search import SearchIndex
 

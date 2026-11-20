@@ -6,14 +6,7 @@ and stem using Porter Stemmer.
 
 import os
 import re
-import nltk
 from nltk.stem import PorterStemmer
-
-# download the punkt tokenizer data if not present
-try:
-    nltk.data.find("tokenizers/punkt_tab")
-except LookupError:
-    nltk.download("punkt_tab", quiet=True)
 
 # single shared stemmer instance, avoids re-creating it for every call
 _stemmer = PorterStemmer()
