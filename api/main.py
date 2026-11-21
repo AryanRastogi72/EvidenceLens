@@ -33,6 +33,8 @@ IDLE_SESSION_SECONDS = 60 * 60
 DEFAULT_DIST = Path(__file__).resolve().parent.parent / "web" / "dist"
 DEV_ORIGIN = "http://localhost:5173"
 WARM_UP_QUERY = "covid"
+DUPLICATE_TITLE_JACCARD = 0.8
+RESULT_MARGIN = 2  # the engine returns this many times top_k results, so a page still has top_k papers after grouping
 LOG = logging.getLogger("uvicorn.error.evidencelens")
 
 
@@ -49,20 +51,37 @@ def normalise_title(title):
     return re.sub(r"[^a-z0-9]", "", title.lower())
 
 
+def title_words(title):
+    return set(re.findall(r"[a-z0-9]+", title.lower()))
+
+
+def same_paper(first, second):
+    """
+    The same paper under two records: equal titles once punctuation is ignored, or equal first 300 characters of
+    the abstract (both non-empty), or title word sets with a Jaccard overlap of at least 0.8.
+    """
+    first_title, second_title = normalise_title(first["title"]), normalise_title(second["title"])
+    if first_title and first_title == second_title:
+        return True
+    first_abstract, second_abstract = normalise_title(first.get("abstract", ""))[:300], normalise_title(second.get("abstract", ""))[:300]
+    if first_abstract and first_abstract == second_abstract:
+        return True
+    first_words, second_words = title_words(first["title"]), title_words(second["title"])
+    return bool(first_words and second_words) and len(first_words & second_words) / len(first_words | second_words) >= DUPLICATE_TITLE_JACCARD
+
+
 def group_duplicates(items):
     """
-    Display-only grouping: items whose normalised titles are identical collapse into the first one, which lists
-    the others in `duplicates` (ext_ids). Items with an empty normalised title are never grouped.
-    Evaluation code must not use this.
+    Display-only grouping: an item that is the same paper as an earlier group collapses into that group's first item,
+    which lists the others in `duplicates` (ext_ids). Evaluation code must not use this.
     """
-    groups, by_title = [], {}
+    groups = []
     for item in items:
-        key = normalise_title(item["title"]) or item["ext_id"]
-        if key in by_title:
-            by_title[key]["duplicates"].append(item["ext_id"])
+        group = next((g for g in groups if same_paper(g, item)), None)
+        if group:
+            group["duplicates"].append(item["ext_id"])
         else:
-            by_title[key] = dict(item, duplicates=[])
-            groups.append(by_title[key])
+            groups.append(dict(item, duplicates=[]))
     return groups
 
 
@@ -79,24 +98,27 @@ def matched_terms(explanation):
     ]
 
 
+def engine_config(config):
+    return dict(config, top_k=config["top_k"] * RESULT_MARGIN)
+
+
 def build_results(result, index, config):
-    """Adds the explanation to every result and groups duplicate titles. Returns (results, explain_ms)."""
+    """Groups duplicate papers, keeps the first top_k groups and adds the explanation to each. Returns (results, explain_ms)."""
     started = time.perf_counter()
+    candidates = [dict(item, abstract=index.get_title_and_abstract(item["doc_id"])[1]) for item in result["results"]]
     items = []
-    for item in result["results"]:
-        explanation = explain(item["doc_id"], [], index, config, extra_stems=result["ranking_stems"])
+    for rank, group in enumerate(group_duplicates(candidates)[:config["top_k"]], start=1):
+        explanation = explain(group["doc_id"], [], index, config, extra_stems=result["ranking_stems"])
         sentence = explanation["best_sentence"]
         items.append({
-            "doc_id": item["doc_id"], "ext_id": item["ext_id"], "title": item["title"], "score": item["score"],
+            "doc_id": group["doc_id"], "ext_id": group["ext_id"], "title": group["title"], "score": group["score"],
             "evidence_class": explanation["evidence"]["class"], "evidence_rule": explanation["evidence"]["rule_id"],
             "matched_terms": matched_terms(explanation),
             "best_sentence": sentence["text"] if sentence else None,
             "highlights": sentence["highlights"] if sentence else [],
+            "duplicates": group["duplicates"], "rank": rank,
         })
-    grouped = group_duplicates(items)
-    for rank, item in enumerate(grouped, start=1):
-        item["rank"] = rank
-    return grouped, (time.perf_counter() - started) * 1000
+    return items, (time.perf_counter() - started) * 1000
 
 
 def build_response(session_id, result, config, index, started, controller_ms):
@@ -173,7 +195,7 @@ def register_static_files(app, dist_dir):
 def warm_up(state):
     """One throwaway search at startup so the first real request does not pay for loading shards."""
     started = time.perf_counter()
-    result = handle_turn("_warm_up", WARM_UP_QUERY, state.index, state.config, allow_clarify=False)
+    result = handle_turn("_warm_up", WARM_UP_QUERY, state.index, engine_config(state.config), allow_clarify=False)
     build_results(result, state.index, state.config)
     SESSIONS.pop("_warm_up")
     LOG.info("Warm-up search finished in %.0f ms", (time.perf_counter() - started) * 1000)
@@ -215,7 +237,7 @@ def create_app(dist_dir=DEFAULT_DIST, load_engine=True):
         with state.engine_lock:
             new_session = body.session_id is not None and body.session_id not in SESSIONS
             started = time.perf_counter()
-            result = handle_turn(session_id, body.text, state.index, state.config, allow_clarify=body.ranker == "agent", ranker=body.ranker, **options)
+            result = handle_turn(session_id, body.text, state.index, engine_config(state.config), allow_clarify=body.ranker == "agent", ranker=body.ranker, **options)
             controller_ms = (time.perf_counter() - started) * 1000
             response = build_response(session_id, result, state.config, state.index, started, controller_ms)
             response["new_session"] = new_session
@@ -231,7 +253,7 @@ def create_app(dist_dir=DEFAULT_DIST, load_engine=True):
             if body.choice_id not in [c["id"] for c in choices]:
                 raise ApiError(422, "unknown_choice", f"choice_id {body.choice_id} is not among the clarification choices of the last turn.")
             started = time.perf_counter()
-            result = apply_clarification(body.session_id, body.choice_id, state.index, state.config)
+            result = apply_clarification(body.session_id, body.choice_id, state.index, engine_config(state.config))
             controller_ms = (time.perf_counter() - started) * 1000
             return build_response(body.session_id, result, state.config, state.index, started, controller_ms)
 
@@ -245,7 +267,7 @@ def create_app(dist_dir=DEFAULT_DIST, load_engine=True):
             if not SESSIONS[body.session_id]["turns"]:
                 raise ApiError(422, "no_turn", "There is no search in this session to rank again.")
             started = time.perf_counter()
-            result = rerank_turn(body.session_id, body.ranker, state.index, state.config)
+            result = rerank_turn(body.session_id, body.ranker, state.index, engine_config(state.config))
             controller_ms = (time.perf_counter() - started) * 1000
             response = build_response(body.session_id, result, state.config, state.index, started, controller_ms)
             response["new_session"] = False

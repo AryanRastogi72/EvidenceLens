@@ -252,6 +252,43 @@ class DuplicateTests(unittest.TestCase):
         groups = group_duplicates([{"ext_id": "a", "title": "..."}, {"ext_id": "b", "title": "--"}])
         self.assertEqual(len(groups), 2)
 
+    def test_the_same_paper_with_two_slightly_different_titles_is_grouped(self):
+        first = "Potential Maternal and Infant Outcomes from (Wuhan) Coronavirus 2019-nCoV Infecting Pregnant Women: Lessons from SARS, MERS, and Other Human Coronavirus Infections"
+        second = "Potential Maternal and Infant Outcomes from Coronavirus 2019-nCoV (SARS-CoV-2) Infecting Pregnant Women: Lessons from SARS, MERS, and Other Human Coronavirus Infections"
+        groups = group_duplicates([{"ext_id": "15a075cc", "title": first}, {"ext_id": "iy9vjpuh", "title": second}])
+        self.assertEqual(len(groups), 1)
+        self.assertEqual(groups[0]["duplicates"], ["iy9vjpuh"])
+
+    def test_equal_abstracts_group_papers_with_different_titles(self):
+        abstract = "Unfortunately, there is limited experience with coronavirus infections during pregnancy. " * 5
+        groups = group_duplicates([
+            {"ext_id": "a", "title": "A first title", "abstract": abstract},
+            {"ext_id": "b", "title": "Something else entirely", "abstract": abstract.upper()},
+        ])
+        self.assertEqual(len(groups), 1)
+
+    def test_similar_but_different_titles_are_not_grouped(self):
+        groups = group_duplicates([
+            {"ext_id": "a", "title": "Vaccination during pregnancy: current and possible future recommendations"},
+            {"ext_id": "b", "title": "Vaccination during pregnancy: a systematic review of safety and effectiveness"},
+        ])
+        self.assertEqual(len(groups), 2)
+
+    def test_empty_abstracts_never_match(self):
+        groups = group_duplicates([
+            {"ext_id": "a", "title": "One paper", "abstract": ""},
+            {"ext_id": "b", "title": "Another unrelated study", "abstract": ""},
+            {"ext_id": "c", "title": "A third report", "abstract": "..."},
+            {"ext_id": "d", "title": "A fourth note", "abstract": "--"},
+        ])
+        self.assertEqual(len(groups), 4)
+
+    def test_a_page_repeats_no_paper_and_is_still_full(self):
+        body = search("covid vaccine pregnant").json()
+        ids = [r["ext_id"] for r in body["results"]]
+        self.assertFalse({"15a075cc", "iy9vjpuh"} <= set(ids))
+        self.assertEqual(len(ids), 10)
+
     def test_search_ranks_count_groups(self):
         body = search("covid vaccine pregnant").json()
         self.assertTrue(any(r["duplicates"] for r in body["results"]))
