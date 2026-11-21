@@ -66,7 +66,7 @@ cd ..
 uvicorn api.main:app
 ```
 
-Then open http://localhost:8000 (health check: http://localhost:8000/api/health). `build_index` reads `data/raw/beir/trec-covid.zip` or downloads TREC-COVID the first time, and writes `index_out/`. The index files are already in the repository except `abstracts.sqlite`, so after a fresh clone only `build_index` is needed; rebuilding the thesaurus can give slightly different neighbours, because word2vec training with several workers is not bit-reproducible.
+Then open http://localhost:8000 (health check: http://localhost:8000/api/health). The dataset ships in the submission ZIP as `data/raw/beir/trec-covid.zip`; `build_index` reads it, or downloads TREC-COVID the first time if the file is missing. If the BEIR download server is down, the same corpus is available from the BEIR copy on HuggingFace (`BeIR/trec-covid`). `build_index` and writes `index_out/`. The index files are already in the repository except `abstracts.sqlite`, so after a fresh clone only `build_index` is needed; rebuilding the thesaurus can give slightly different neighbours, because word2vec training with several workers is not bit-reproducible.
 
 Command-line search, tests and the web development server:
 
@@ -125,9 +125,10 @@ What the results say, including the losses:
 1. The agent keeps 98% (keyword) and 96% (question) of topics inside the 20 to 200 band, against 32% and 12% for the midsem AND baseline.
 2. It is tied with BM25 on keyword queries (nDCG@10 0.5897 against 0.6032, p = 0.6737) and clearly worse on question text (0.4452 against 0.6555, p = 0.0001).
 3. The band caps the set at about 200 papers, so Recall@1000 is 0.1217 and 0.0531 against 0.4161 and 0.4543 for BM25.
-4. Rocchio feedback and the evidence weight did not improve ranking. The controller revision (v2.1) was made after seeing v2.0 on all 50 topics, with no held-out topics, so its gain is a post-hoc result.
-5. Our BM25 on the question text scores nDCG@10 0.6555; the BEIR paper reports 0.656 for BM25 on TREC-COVID (Table 2, version 4). Their BM25 setup differs from ours, so we do not claim to reproduce it.
-6. Classifier recall is low for case reports (0.123) and opinion pieces (0.142), and the per-class numbers rest on 120 documents.
+4. R4 and R5 run with clarification switched off, because there is no user to answer; with it on, 27 (keyword) and 7 (question) of the 50 topics would stop at a clarifying question instead of a ranked set.
+5. Rocchio feedback and the evidence weight did not improve ranking. The controller revision (v2.1) was made after seeing v2.0 on all 50 topics, with no held-out topics, so its gain is a post-hoc result.
+6. Our BM25 on the question text scores nDCG@10 0.6555; the BEIR paper reports 0.656 for BM25 on TREC-COVID (Table 2, version 4). Their BM25 setup differs from ours, so we do not claim to reproduce it.
+7. Classifier recall is low for case reports (0.123) and opinion pieces (0.142), and the per-class numbers rest on 120 documents.
 
 ## Information Retrieval choices
 
