@@ -1,0 +1,93 @@
+{
+  "note": "diagnostic only: BM25 top k over the whole collection with k = the size of R4's accepted set; no other result file changes",
+  "fields": {
+    "metadata.query": {
+      "agent_R4": {
+        "hits": 107.4,
+        "set_precision": 0.465638491524848,
+        "set_recall": 0.12166888589594489,
+        "set_f1": 0.17322663707997094
+      },
+      "bm25_top_k": {
+        "hits": 107.4,
+        "set_precision": 0.4932003745751097,
+        "set_recall": 0.12680651298181753,
+        "set_f1": 0.18241358242703817
+      }
+    },
+    "text": {
+      "agent_R4": {
+        "hits": 128.18,
+        "set_precision": 0.26386362865480417,
+        "set_recall": 0.053456195192783836,
+        "set_f1": 0.07764770142546164
+      },
+      "bm25_top_k": {
+        "hits": 128.18,
+        "set_precision": 0.559445034585142,
+        "set_recall": 0.11073693149248928,
+        "set_f1": 0.16197487179417897
+      }
+    }
+  },
+  "tests": [
+    {
+      "run_a": "R4",
+      "run_b": "BM25_TOP_K",
+      "field": "metadata.query",
+      "metric": "set_f1",
+      "mean_a": 0.17322663707997094,
+      "mean_b": 0.18241358242703817,
+      "mean_difference": -0.00918694534706723,
+      "p_value": 0.29457054294570545,
+      "topics_a_wins": 21,
+      "topics_b_wins": 25,
+      "topics_tied": 4,
+      "significant_after_bonferroni": false
+    },
+    {
+      "run_a": "R4",
+      "run_b": "BM25_TOP_K",
+      "field": "metadata.query",
+      "metric": "set_precision",
+      "mean_a": 0.465638491524848,
+      "mean_b": 0.4932003745751097,
+      "mean_difference": -0.0275618830502617,
+      "p_value": 0.27487251274872515,
+      "topics_a_wins": 21,
+      "topics_b_wins": 25,
+      "topics_tied": 4,
+      "significant_after_bonferroni": false
+    },
+    {
+      "run_a": "R4",
+      "run_b": "BM25_TOP_K",
+      "field": "text",
+      "metric": "set_f1",
+      "mean_a": 0.07764770142546164,
+      "mean_b": 0.16197487179417897,
+      "mean_difference": -0.08432717036871731,
+      "p_value": 9.999000099990002e-05,
+      "topics_a_wins": 3,
+      "topics_b_wins": 47,
+      "topics_tied": 0,
+      "significant_after_bonferroni": true
+    },
+    {
+      "run_a": "R4",
+      "run_b": "BM25_TOP_K",
+      "field": "text",
+      "metric": "set_precision",
+      "mean_a": 0.26386362865480417,
+      "mean_b": 0.559445034585142,
+      "mean_difference": -0.2955814059303379,
+      "p_value": 9.999000099990002e-05,
+      "topics_a_wins": 3,
+      "topics_b_wins": 47,
+      "topics_tied": 0,
+      "significant_after_bonferroni": true
+    }
+  ],
+  "tests_run": 4,
+  "bonferroni_threshold": 0.0125
+}

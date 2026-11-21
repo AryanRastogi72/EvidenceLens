@@ -23,6 +23,7 @@
         "top_neighbours": 5
     },
     "initial_concepts": 3,
+    "disabled_moves": [],
     "seed": 42,
     "clarify_candidates": 300,
     "clarify_min_size": 10,

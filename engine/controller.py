@@ -218,7 +218,10 @@ RELAX_MOVES_UNDER_FILTER = [relax_expand_synonyms, relax_wildcard]
 # ---- main loop ----
 
 def first_applicable_move(moves, state, docs, index, config):
+    disabled = config.get("disabled_moves", [])
     for move in moves:
+        if move.__name__.upper() in disabled:
+            continue
         outcome = move(state, docs, index, config)
         if outcome:
             return outcome
