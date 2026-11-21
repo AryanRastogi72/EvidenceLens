@@ -17,13 +17,14 @@ EvidenceLens adds:
 3. Evidence Lens: a rule-based study-type classifier (systematic review, randomized trial, observational, case report, modelling, lab or animal, opinion, other) used as a filter and as an optional score.
 4. Per-result explanations: matched words, the BM25 contribution of each, the rule behind the study type and the best sentence of the abstract.
 5. BM25 ranking with a title zone, next to the tf-idf cosine ranking.
-6. A larger evaluation with paired significance tests and a comparison with the BM25 result published for TREC-COVID in the BEIR paper.
+6. Spelling correction by tolerant retrieval: trigram candidates from the k-gram index, Levenshtein edit distance of at most 2, shown to the user as "Showing results for ... (you typed ...)".
+7. A larger evaluation, including a size-matched BM25 baseline and a controller ablation, with paired significance tests and a comparison with the BM25 result published for TREC-COVID in the BEIR paper.
 
 These are system integration and teaching contributions built from established methods. They are not a new retrieval algorithm, and the evaluation does not show that the agent is more relevant than plain BM25 (see below).
 
 ## How search works
 
-1. The question is lowercased, tokenized and stemmed; query stopwords are removed.
+1. The question is lowercased, tokenized and stemmed; query stopwords are removed; a word missing from the index is corrected to a close word of the collection.
 2. Each word or synonym group becomes a concept. Concepts are ordered by idf, and very common ones are held back (index elimination).
 3. The conversation rules rewrite a follow-up turn into the session's concepts and show the rewritten query.
 4. The controller builds a Boolean query from the three rarest concepts and counts the hits from the postings.
@@ -129,6 +130,9 @@ What the results say, including the losses:
 5. Rocchio feedback and the evidence weight did not improve ranking. The controller revision (v2.1) was made after seeing v2.0 on all 50 topics, with no held-out topics, so its gain is a post-hoc result.
 6. Our BM25 on the question text scores nDCG@10 0.6555; the BEIR paper reports 0.656 for BM25 on TREC-COVID (Table 2, version 4). Their BM25 setup differs from ours, so we do not claim to reproduce it.
 7. Classifier recall is low for case reports (0.123) and opinion pieces (0.142), and the per-class numbers rest on 120 documents.
+8. Size-matched baseline: BM25's top k with k equal to the agent's set size is not significantly different on keyword queries (set F1 0.1824 against 0.1732, p = 0.2946) and clearly better on question text (set F1 0.1620 against 0.0776, p = 0.0001). At equal size the agent's set is not more precise than BM25; what it adds is the size control, the trace and the clarification.
+9. Controller ablation (14 tests, Bonferroni threshold 0.0036, diagnostic only): switching off the title-zone move lowers keyword nDCG@10 from 0.5897 to 0.4840 (p = 0.0017); no other single move is shown to matter, and on question text none is.
+10. Spelling correction: one typo in the longest word of each keyword query lowers BM25 nDCG@10 from 0.6032 to 0.3270; with correction it is 0.5611, and the original stem comes back in 40 of 50 queries.
 
 ## Information Retrieval choices
 
