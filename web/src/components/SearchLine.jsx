@@ -2,7 +2,12 @@ import { formatNumber, plainRule, pretty } from "../lib.js";
 
 // A short plain clause about the turn, for the researcher. The reasoning itself stays in the sheet.
 function clauses(turn) {
-  return turn.resolution_rules.map(plainRule);
+  return turn.resolution_rules.filter((rule) => rule.rule !== "SPELLING_FIX").map(plainRule);
+}
+
+// Typed words that were replaced by a close word of the collection, as [typed, used] pairs.
+function spellingFixes(turn) {
+  return turn.resolution_rules.filter((rule) => rule.rule === "SPELLING_FIX").map((rule) => rule.detail.split(" -> "));
 }
 
 // The only line above the results: what was searched, how many papers, and the way to see how.
@@ -20,6 +25,11 @@ export default function SearchLine({ turn, onOpen, buttonRef }) {
           How did I get this?
         </button>
       </div>
+      {spellingFixes(turn).map(([typed, used]) => (
+        <p key={typed} className="rule-plain m-0 mt-1">
+          Showing results for <b>{used}</b> (you typed {typed}).
+        </p>
+      ))}
       {clauses(turn).length > 0 && <p className="rule-plain m-0 mt-1">{clauses(turn).join(" ")}</p>}
     </div>
   );

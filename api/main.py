@@ -67,7 +67,7 @@ def group_duplicates(items):
 
 
 def concept_view(concept, status):
-    keys = ("label", "stems", "idf", "required", "excluded", "source", "facet")
+    keys = ("label", "stems", "idf", "required", "excluded", "source", "facet", "corrected_from")
     return dict({key: concept[key] for key in keys if key in concept}, status=status)
 
 

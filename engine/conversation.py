@@ -4,7 +4,7 @@ Multi-turn sessions. Each turn is rewritten into a full set of concepts by five 
 the controller runs on those concepts, and the rewritten query plus the rules that fired are returned.
 
 Rules, in the order they are checked:
-  EVIDENCE_FILTER, EXCLUSION, FOLLOWUP_DETECT, FACET_SWAP, TOPIC_SWITCH.
+  EVIDENCE_FILTER, EXCLUSION, FOLLOWUP_DETECT, FACET_SWAP, TOPIC_SWITCH (and SPELLING_FIX when a typed word is corrected).
 """
 
 import re
@@ -166,12 +166,21 @@ def rewritten_query(concepts, evidence_filter):
     return text + (f" [only: {evidence_filter}]" if evidence_filter else "")
 
 
+def understand_with_spelling(text, index, config, rules):
+    """understand(), plus one SPELLING_FIX rule for every typed word that was replaced by a close vocabulary word."""
+    concepts = understand(text, index, config)
+    for concept in concepts:
+        if "corrected_from" in concept:
+            rules.append({"rule": "SPELLING_FIX", "detail": f"{concept['corrected_from']} -> {concept['label']}"})
+    return concepts
+
+
 def update_concepts(session, text, original_text, excluded, index, config, rules):
-    """Applies FOLLOWUP_DETECT, FACET_SWAP and TOPIC_SWITCH. Returns the new concept list."""
+    """Applies FOLLOWUP_DETECT, FACET_SWAP, TOPIC_SWITCH and SPELLING_FIX. Returns the new concept list."""
     if not session["concepts"]:
         session["topic_texts"] = [text]
-        return understand(text, index, config) + excluded
-    new_concepts = understand(FOLLOWUP_IGNORE.sub(" ", text), index, config)
+        return understand_with_spelling(text, index, config, rules) + excluded
+    new_concepts = understand_with_spelling(FOLLOWUP_IGNORE.sub(" ", text), index, config, rules)
     signal = followup_signal(original_text)
     overlap = jaccard({c["label"] for c in new_concepts}, positive_labels(session["concepts"]))
     if signal is None and len(new_concepts) >= 2 and overlap < config["topic_switch_jaccard"]:
@@ -194,7 +203,8 @@ def bm25_full_collection(concepts, session, index, config):
     Returns (ranked, trace, clarifications, ranking stems, hits).
     """
     excluded_stems = {s for c in concepts if c.get("excluded") for s in c["stems"]}
-    stems = sorted(set(query_terms(" ".join(session["topic_texts"]))) - excluded_stems)
+    corrected = {stem for c in concepts if "corrected_from" in c for stem in c["stems"]}
+    stems = sorted((set(query_terms(" ".join(session["topic_texts"]))) | corrected) - excluded_stems)
     allowed = docs_of_class(index, session["evidence_filter"]) if session["evidence_filter"] else None
     excluded_docs = {d for s in excluded_stems for d, _ in index.get_postings(s)}
     matching = {d for s in stems for d, _ in index.get_postings(s)} - excluded_docs
