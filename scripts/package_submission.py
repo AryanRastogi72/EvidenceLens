@@ -16,6 +16,8 @@ GITHUB_LINK = "https://github.com/AryanRastogi72/EvidenceLens"
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REPORT_PDF = os.path.join("docs", "report", "EvidenceLens_Report.pdf")
 DATASET_ZIP = os.path.join("data", "raw", "beir", "trec-covid.zip")
+# The rest of index_out is rebuilt by build_index. These two are shipped because retraining word2vec is not bit-reproducible.
+SHIPPED_INDEX_FILES = (os.path.join("index_out", "thesaurus.json"), os.path.join("index_out", "evidence.json"))
 
 LOCAL_EXCLUDE_FILE = os.path.join(PROJECT_ROOT, ".git", "info", "exclude")
 EXCLUDED_FOLDERS = {"index_out", "node_modules", "archive", "reference", ".git", ".venv", "__pycache__", ".pytest_cache", ".mypy_cache", "docs", "scripts"}
@@ -31,19 +33,18 @@ EXCLUDED_GLOBS = ("evaluation/charts/*.png", "evaluation/runs/*.trec", "evaluati
 
 BUILD_TEXT = """EvidenceLens: build instructions
 
-The ZIP leaves out index_out/ (the search index, about 500 MB) and the extracted dataset. Both are rebuilt
-from data/raw/beir/trec-covid.zip, which is included.
+The ZIP leaves out most of index_out/ (the search index, about 500 MB) and the extracted dataset. They are rebuilt
+from data/raw/beir/trec-covid.zip, which is included. index_out/thesaurus.json and index_out/evidence.json ARE included.
 
 1. Python 3.12 or newer and Node.js. In the project folder:
      python -m venv .venv
      .venv\\Scripts\\activate          (Windows; source .venv/bin/activate on macOS and Linux)
      pip install -r requirements.txt
-2. Build the index, the thesaurus and the study-type labels (this reads data/raw/beir/trec-covid.zip):
+2. Build the index (this reads data/raw/beir/trec-covid.zip):
      python -m pipeline.build_index
-     python -m pipeline.build_thesaurus
-     python -m pipeline.build_evidence
-   word2vec training uses several workers and is not bit-reproducible, so the rebuilt thesaurus can differ
-   slightly from the one behind the report. The time for these steps was not measured for this ZIP.
+   Do NOT run build_thesaurus or build_evidence. The shipped index_out/thesaurus.json and index_out/evidence.json are the
+   ones behind the report; word2vec training is not bit-reproducible, so a retrained thesaurus changes the results of
+   the agent runs (R4 and R5) slightly. build_index does not touch these two files.
 3. Build the web app and start the server:
      cd web
      npm install
@@ -91,10 +92,11 @@ def project_files():
             relative_path = os.path.relpath(os.path.join(folder, name), PROJECT_ROOT)
             if not is_excluded(relative_path, local_entries) and not name.startswith("CSD358_"):
                 yield relative_path
+    yield from SHIPPED_INDEX_FILES
 
 
 def check_inputs():
-    missing = [path for path in (REPORT_PDF, DATASET_ZIP) if not os.path.exists(os.path.join(PROJECT_ROOT, path))]
+    missing = [path for path in (REPORT_PDF, DATASET_ZIP, *SHIPPED_INDEX_FILES) if not os.path.exists(os.path.join(PROJECT_ROOT, path))]
     if missing:
         sys.exit("Cannot build the ZIP, these files are missing: " + ", ".join(missing))
 
