@@ -66,7 +66,7 @@ cd ..
 uvicorn api.main:app
 ```
 
-Then open http://localhost:8000 (health check: http://localhost:8000/api/health). The dataset ships in the submission ZIP as `data/raw/beir/trec-covid.zip`; `build_index` reads it, or downloads TREC-COVID the first time if the file is missing. If the BEIR download server is down, the same corpus is available from the BEIR copy on HuggingFace (`BeIR/trec-covid`). `build_index` and writes `index_out/`. The index files are already in the repository except `abstracts.sqlite`, so after a fresh clone only `build_index` is needed; rebuilding the thesaurus can give slightly different neighbours, because word2vec training with several workers is not bit-reproducible.
+Then open http://localhost:8000 (health check: http://localhost:8000/api/health). The dataset ships in the submission ZIP as `data/raw/beir/trec-covid.zip`; `build_index` reads it, or downloads TREC-COVID the first time if the file is missing. If the BEIR download server is down, the same corpus is available from the BEIR copy on HuggingFace (`BeIR/trec-covid`). `build_index` writes `index_out/`. The index files are already in the repository except `abstracts.sqlite`, so after a fresh clone only `build_index` is needed; rebuilding the thesaurus can give slightly different neighbours, because word2vec training with several workers is not bit-reproducible.
 
 Command-line search, tests and the web development server:
 
